@@ -1,14 +1,16 @@
-# Know Your Constellation — 简体中文 (v3.15)
+# Know Your Constellation — 简体中文 (v3.16)
 
 非官方简体中文化：把 **Vanilla Plus Megapack** 里的敌情预测面板
-（`mods/cowboybingus/enemy_intelligence`，上游版本 **v3.15**）的显示文本换成中文，
+（`mods/cowboybingus/enemy_intelligence`，上游版本 **v3.16**）的显示文本换成中文，
 滚动方式与英文原版一致。已在游戏内实测：中文正常显示、不闪退。
 
-![status](https://img.shields.io/badge/game%20build-25327279-informational)
+![status](https://img.shields.io/badge/game%20build-25480438-informational)
+
+> 当前版本对应整合包 **v29**、游戏 **build 25480438 / 1.8.46015.0**、汉化模块 **v3.16-zh-CN**。
 
 ## 下载 / 安装
 
-从 [Releases](../../releases) 下载 `KnowYourConstellation-v3.15-zh-CN.zip`（或在 `dist/` 里）：
+从 [Releases](../../releases) 下载 `KnowYourConstellation-Vanilla-Plus-Megapack-v29-汉化版.zip`（或在 `dist/` 里）：
 
 1. 关闭游戏，用 **HD2Arsenal** 或 **HD2MM** 导入该 ZIP。
 2. 确保已安装 **Bingus Shared Loader v16 或更新**（本包不含加载器）。
@@ -18,9 +20,9 @@
 4. **Purge / Deploy**，正常启动游戏。
 
 验证：`%LOCALAPPDATA%\CowboyBingus\Helldivers2\Logs\EnemyIntelligence.log`
-首行应为 `v3.15-zh-CN`；进入任务简报界面可看到中文滚动预报。
+首行应为 `v3.16-zh-CN`；进入任务简报界面可看到中文滚动预报。
 
-适用范围：游戏 **Steam build 25327279 / 1.8.45850.0**（模块内置游戏指纹校验，
+适用范围：游戏 **Steam build 25480438 / 1.8.46015.0**（模块内置游戏指纹校验，
 游戏更新后需要重新构建）。
 
 ## 改了什么（相对上游源码）
@@ -78,7 +80,7 @@ git am /path/to/0001-zh-CN-localization.patch
 ## English summary
 
 Unofficial Simplified Chinese localisation of the *Know Your Constellation* forecast panel
-(upstream v3.15) inside Vanilla Plus Megapack. The upstream panel is ASCII-only and its marquee
+(upstream v3.16) inside Vanilla Plus Megapack. The upstream panel is ASCII-only and its marquee
 slices text **byte-wise**, so any CJK text triggers `Invalid caret advance` (the panel hides and the
 game can crash). This patch walks the marquee by **UTF-8 character boundaries** instead, relaxes the
 validator to "no control characters or semicolons", and translates the catalogue/panel strings using
