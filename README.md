@@ -38,7 +38,7 @@ Know Your Constellation — 简体中文 (v3.16)
 | `src/catalogue.lua` | 31 条编组标题/说明 → 中文 |
 | `src/heavy_data.lua` | 4 个重型单位显示名 → 中文 |
 
-术语来源：游戏官方简体中文字符串资源（不是社区昵称）。
+术语来源：游戏官方简体中文字符串资源。
 
 完整补丁见 [`patches/0001-zh-CN-localization.patch`](patches/0001-zh-CN-localization.patch)，
 可以直接应用到上游 checkout：
