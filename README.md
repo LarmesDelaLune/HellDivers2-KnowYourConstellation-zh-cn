@@ -1,4 +1,5 @@
-# Know Your Constellation — 简体中文 (v3.16)
+# 绝地潜兵2刷怪模板预测MOD 
+Know Your Constellation — 简体中文 (v3.16)
 
 非官方简体中文化：把 **Vanilla Plus Megapack** 里的敌情预测面板
 （`mods/cowboybingus/enemy_intelligence`，上游版本 **v3.16**）的显示文本换成中文，
