@@ -7,14 +7,17 @@ Know Your Constellation — 简体中文 (v3.16)
 
 ![status](https://img.shields.io/badge/game%20build-25480438-informational)
 
-> 当前版本对应整合包 **v29**、游戏 **build 25480438 / 1.8.46015.0**、汉化模块 **v3.16-zh-CN**。
+> 当前版本对应整合包 **v33**、游戏 **build 25480438 / 1.8.46015.0**、汉化模块 **v3.16-zh-CN**、加载器 **Bingus Shared Loader v18**。
 
 ## 下载 / 安装
 
-从 [Releases](../../releases) 下载 `KnowYourConstellation-Vanilla-Plus-Megapack-v29-汉化版.zip`（或在 `dist/` 里）：
+从 [Releases](../../releases) 下载（或在 `dist/` 里）：
+
+* `Vanilla-Plus-Megapack-v33-汉化版.zip` —— **一键整合包**：上游 v33 的全部 16 个选项 + 中文敌情预测面板，导入一个包就够。
+* `KnowYourConstellation-v33-ZH-CN.zip` —— **独立汉化包**：只替换敌情预测模块，配合英文整合包使用。
 
 1. 关闭游戏，用 **HD2Arsenal** 或 **HD2MM** 导入该 ZIP。
-2. 确保已安装 **Bingus Shared Loader v16 或更新**（本包不含加载器）。
+2. 确保已安装 **Bingus Shared Loader v18 或更新**（本包不含加载器；整合包 v31 起要求 v18）。
 3. 与整合包同时使用时，二选一：
    * 把本包**优先级设为高于整合包**；或
    * 在整合包选项里取消勾选 *Know Your Constellation*。
@@ -64,9 +67,22 @@ git am /path/to/0001-zh-CN-localization.patch
 | `tests.py` | 用游戏 LuaJIT 跑组件自带测试（含本地化面板测试） |
 | `localise_test.py` | 由上游 `tests/test_panel.lua` 生成中文本地化测试副本（英文期望值→中文、合成字体改为按字符度量、caret 断言按字符边界比较） |
 | `deploy.py` | 写入本地 Arsenal 仓库并复核（会把原文件备份） |
+| `v33/build.py` | v33 流水线：上游 v3.16 源码 + 本地化文件 → 游戏 LuaJIT 编译 → 换进 v33 选项容器 |
+| `v33/pack.py` | v33 流水线：生成整合包与独立包 |
+| `v33/verify.py` | v33 流水线：与上游 v33 逐条比对，断言只有 KYC 一个文件不同 |
 
 测试：`python tests.py` —— `test_panel_zh` 覆盖中文逐字量宽、右边缘进入、六种分辨率、
 切换任务不重播、滚动连续性、裁剪与缓存上限，全部通过。
+
+## 版本跟进
+
+游戏更新后模块的指纹校验会失败（面板静默停用，游戏不崩）。跟进的判据：
+
+* `EnemyIntelligence.log` 首行不再是 `v3.16-zh-CN`，或加载器日志出现 `disabled: ...`。
+* 上游跟进后先看它改了哪些文件：只改 `mission.lua` / `resolve.lua`（换哈希、挪偏移）时，本汉化补丁可以直接套上，重跑 `tools/v33/build.py` + `pack.py` 即可。
+* 若上游重写了 `panel.lua` 的排版逻辑，跑马灯那部分需要重新 rebase，再用 `tools/tests.py`、`tools/localise_test.py` 验证中文排版。
+
+> v29 → v33 时 KnowYourConstellation 仍是 v3.16，我们改动的 4 个文件一字未变，重新编译出的模块与 v29 版本**逐字节相同**，所以只重新打包、没有改汉化。
 
 ## 致谢与授权说明
 
@@ -86,6 +102,6 @@ slices text **byte-wise**, so any CJK text triggers `Invalid caret advance` (the
 game can crash). This patch walks the marquee by **UTF-8 character boundaries** instead, relaxes the
 validator to "no control characters or semicolons", and translates the catalogue/panel strings using
 terminology from the game's official zh-Hans resources. Verified in game: Chinese text renders and
-scrolls exactly like the English build. Install the ZIP from `dist/`, keep Bingus Shared Loader v16+
+scrolls exactly like the English build. Install the ZIP from `dist/`, keep Bingus Shared Loader v18+
 installed, and give this mod priority over the megapack (or uncheck the megapack's forecast option).
 Unofficial, not affiliated with the upstream author.
