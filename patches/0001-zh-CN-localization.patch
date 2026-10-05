@@ -1,0 +1,263 @@
+From 7e7813e50b9d42b77fe5a0e6d95cfe1bb38d13dd Mon Sep 17 00:00:00 2001
+From: zh-CN <noreply@local>
+Date: Wed, 23 Sep 2026 10:53:59 +0800
+Subject: [PATCH] zh-CN: UTF-8 safe forecast marquee and Simplified Chinese
+ catalogue
+
+- panel.lua: walk the marquee by UTF-8 character boundaries instead of bytes
+  (byte-wise prefixes split multi-byte glyphs and triggered 'Invalid caret advance')
+- model.lua/panel.lua: allow non-ASCII display text (still reject control characters
+  and semicolons)
+- panel.lua: allow up to 2 em per caret step so ~1em CJK glyphs pass the sanity check
+- catalogue.lua/heavy_data.lua: Simplified Chinese text, terminology taken from the
+  game's official zh-Hans resources
+---
+ .../KnowYourConstellation/src/catalogue.lua   | 67 ++++++++++---------
+ .../KnowYourConstellation/src/heavy_data.lua  |  2 +-
+ .../KnowYourConstellation/src/model.lua       | 22 +++---
+ .../KnowYourConstellation/src/panel.lua       | 52 ++++++++++----
+ 4 files changed, 87 insertions(+), 56 deletions(-)
+
+diff --git a/components/KnowYourConstellation/src/catalogue.lua b/components/KnowYourConstellation/src/catalogue.lua
+index dc1d64f..ae3e249 100644
+--- a/components/KnowYourConstellation/src/catalogue.lua
++++ b/components/KnowYourConstellation/src/catalogue.lua
+@@ -1,35 +1,36 @@
+--- Plain ASCII player-facing descriptions. These describe composition traits.
+--- They are not an exhaustive roster or a promise of individual encounters.
++-- Localised (zh-CN) player-facing descriptions. These describe composition
++-- traits; they are not an exhaustive roster or a promise of encounters.
++-- Terminology follows the game's official Simplified Chinese resources.
+ return {
+-    [1] = {'BILE BUGS', 'Bile Spewers, Spitters, Bile Warriors'},
+-    [2] = {'ARMORED BUGS', 'Hive Guards and Charger groups'},
+-    [3] = {'HUNTER SWARMS', 'Hunters and Pouncers'},
+-    [4] = {'FLYER COMPOSITION', 'Unit intelligence unavailable'},
+-    [5] = {'LIGHT BUGS', 'Scavengers, Warriors, Brood Commanders'},
+-    [6] = {'BUG NURSERY', 'Nursing Spewers and Scavenger groups'},
+-    [7] = {'MIXED TERMINIDS', 'Mixed ground forces'},
+-    [8] = {'SUPER PREDATORS', 'Enhanced Hunter variants'},
+-    [9] = {'GLOOM VARIANTS', 'Gloom Warriors, Hunters and Titans'},
+-    [10] = {'BURROWERS', 'Burrowing Warriors, Spewers and Chargers'},
+-    [11] = {'DRAGONROACH ACTIVITY', 'Dragon unit enabled by mission modifier'},
+-    [12] = {'SHRIEKER MODIFIER', 'Unit intelligence unavailable'},
+-    [13] = {'ASSAULT FORCES', 'Melee infantry and assault groups'},
+-    [14] = {'PHALANX FORCES', 'Heavy weapon soldiers and suppressors'},
+-    [15] = {'ARTILLERY FORCES', 'Rocket soldiers and artillery groups'},
+-    [16] = {'AIR COMPOSITION', 'Unit intelligence unavailable'},
+-    [17] = {'ARMORED COLUMN', 'Scout walkers and tank groups'},
+-    [18] = {'MIXED AUTOMATONS', 'Mixed infantry and armored forces'},
+-    [19] = {'JUMP ASSAULT', 'Jump infantry and jump soldiers'},
+-    [20] = {'CYBORG FORCES', 'Cyborg elites and siege engines'},
+-    [21] = {'GUNSHIP MODIFIER', 'Unit intelligence unavailable'},
+-    [22] = {'IVORY LEGION', 'Flamer infantry and shotgun soldiers'},
+-    [23] = {'HIVE LORD MODIFIER', 'Unit intelligence unavailable'},
+-    [24] = {'ILLUMINATE STRAGGLERS', 'Unit intelligence unavailable'},
+-    [25] = {'WAR MACHINE MODIFIER', 'Unit intelligence unavailable'},
+-    [26] = {'ILLUMINATE ENGINEERS', 'Staff units, jet units and exomechs'},
+-    [27] = {'ILLUMINATE INVASION', 'Corrupted, Overseers and tripods'},
+-    [28] = {'ILLUMINATE HARVEST', 'Corrupted, beam units and tripods'},
+-    [29] = {'BODY HORROR', 'Corrupted and body horror variants'},
+-    [31] = {'HORDE FORCES', 'Horde-only mission composition'},
+-    [30] = {'SEAF SUPPORT', 'Allied soldiers and specialists'},
++    [1] = {'胆汁虫群', '胆汁喷涌虫、胆汁吐沫虫与吐酸武斗虫'},
++    [2] = {'重甲虫群', '虫窝护卫与强袭虫群'},
++    [3] = {'追猎虫群', '追猎虫与猛扑虫'},
++    [4] = {'飞行虫群', '暂无兵种情报'},
++    [5] = {'轻型虫群', '食腐虫、武斗虫与虫族指挥官'},
++    [6] = {'虫族育巢', '抚育喷涌虫与食腐虫群'},
++    [7] = {'终结族混编虫群', '混编地面部队'},
++    [8] = {'超级掠食者', '强化追猎虫变种'},
++    [9] = {'阴霾变种', '阴霾变异的武斗虫、追猎虫与吐酸泰坦'},
++    [10] = {'掘地虫群', '爆裂武斗虫、爆裂喷涌虫与爆裂强袭虫'},
++    [11] = {'蟑龙活动', '任务修正启用蟑龙'},
++    [12] = {'尖啸虫修正', '暂无兵种情报'},
++    [13] = {'突击部队', '近战步兵与突击集群'},
++    [14] = {'方阵部队', '重武器士兵与压制单位'},
++    [15] = {'炮兵部队', '火箭兵与炮兵集群'},
++    [16] = {'空中编组', '暂无兵种情报'},
++    [17] = {'装甲纵队', '侦察纵步者与坦克集群'},
++    [18] = {'机器人混编部队', '混编步兵与装甲部队'},
++    [19] = {'跳跃突击部队', '跳跃步兵与跳跃士兵'},
++    [20] = {'生化人部队', '生化人精锐与攻城机兵'},
++    [21] = {'炮舰修正', '暂无兵种情报'},
++    [22] = {'象牙军团', '喷火步兵与霰弹枪兵'},
++    [23] = {'霸王虫修正', '暂无兵种情报'},
++    [24] = {'光能者残部', '暂无兵种情报'},
++    [25] = {'战争机器修正', '暂无兵种情报'},
++    [26] = {'光能者工程部队', '持杖单位、喷气单位与外骨骼机甲'},
++    [27] = {'光能者入侵部队', '无票者、监视者与猎杀器'},
++    [28] = {'光能者收割部队', '无票者、光束单位与猎杀器'},
++    [29] = {'躯体畸变', '无票者与躯体畸变变种'},
++    [31] = {'虫群部队', '仅虫群任务的编组'},
++    [30] = {'超级地球武装部队支援', '友军士兵与专业人员'},
+ }
+diff --git a/components/KnowYourConstellation/src/heavy_data.lua b/components/KnowYourConstellation/src/heavy_data.lua
+index effdb2e..d5b5d73 100644
+--- a/components/KnowYourConstellation/src/heavy_data.lua
++++ b/components/KnowYourConstellation/src/heavy_data.lua
+@@ -1,2 +1,2 @@
+ -- Generated from the supported-build constellation catalogue.
+-return {["labels"]={["0x9e2e17f2ccccafdd"]="Bile Titans",["0x960b48a421a3faaa"]="Dragonroaches",["0xd37e8d120d2836e3"]="Gloom Bile Titans",["0xef04cb84d097a497"]="Gloom Bile Titans"},["units"]={{["resource"]="0x9e2e17f2ccccafdd",["family"]="0x32037646",["weights"]={1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0},["tags"]={}},{["resource"]="0x960b48a421a3faaa",["family"]="0x266feb3f",["weights"]={1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0},["tags"]={11}},{["resource"]="0xef04cb84d097a497",["family"]="0xd66c53ad",["weights"]={0.0,0.0,0.0,0.0,1.0,1.0,1.0,1.0,1.0,1.0},["tags"]={9}}},["groups"]={{["members"]={"0x32037646"},["tags"]={},["min"]=6,["max"]=7,["weight"]=0.20000000298023224,["overrides"]={},["players_min"]=1,["players_max"]=4},{["members"]={"0x32037646"},["tags"]={},["min"]=8,["max"]=10,["weight"]=0.30000001192092896,["overrides"]={},["players_min"]=1,["players_max"]=4},{["members"]={"0xd66c53ad"},["tags"]={9},["min"]=8,["max"]=10,["weight"]=0.30000001192092896,["overrides"]={},["players_min"]=1,["players_max"]=4},{["members"]={"0x32037646"},["tags"]={},["min"]=6,["max"]=10,["weight"]=0.3499999940395355,["overrides"]={},["players_min"]=1,["players_max"]=4},{["members"]={"0xd66c53ad"},["tags"]={9},["min"]=8,["max"]=10,["weight"]=0.30000001192092896,["overrides"]={},["players_min"]=1,["players_max"]=4},{["members"]={"0x32037646"},["tags"]={},["min"]=8,["max"]=10,["weight"]=0.4000000059604645,["overrides"]={},["players_min"]=1,["players_max"]=4},{["members"]={"0xd66c53ad"},["tags"]={9},["min"]=7,["max"]=10,["weight"]=1.0,["overrides"]={},["players_min"]=1,["players_max"]=4},{["members"]={"0x266feb3f"},["tags"]={11},["min"]=5,["max"]=6,["weight"]=2.0,["overrides"]={},["players_min"]=1,["players_max"]=4},{["members"]={"0x266feb3f"},["tags"]={11},["min"]=7,["max"]=9,["weight"]=3.0,["overrides"]={},["players_min"]=1,["players_max"]=4},{["members"]={"0x266feb3f"},["tags"]={11},["min"]=10,["max"]=10,["weight"]=2.4000000953674316,["overrides"]={},["players_min"]=1,["players_max"]=4}},["swaps"]={{["tag"]=1,["source"]="0x51eea86bf6997e4e",["target"]="0x72a83e49ced6db3d",["min"]=2,["max"]=100,["priority"]=0},{["tag"]=1,["source"]="0x9a8a3aae287b230c",["target"]="0x72a83e49ced6db3d",["min"]=2,["max"]=100,["priority"]=0},{["tag"]=3,["source"]="0x51eea86bf6997e4e",["target"]="0xaab438596f5e8fd9",["min"]=2,["max"]=100,["priority"]=0},{["tag"]=3,["source"]="0x9a8a3aae287b230c",["target"]="0xaab438596f5e8fd9",["min"]=2,["max"]=100,["priority"]=0},{["tag"]=1,["source"]="0x32541fc4ec7c9cdc",["target"]="0x10081acef6163ef6",["min"]=3,["max"]=100,["priority"]=0},{["tag"]=9,["source"]="0xbe39e313a1e46bb9",["target"]="0x728421351d440ebc",["min"]=2,["max"]=100,["priority"]=2},{["tag"]=9,["source"]="0x32541fc4ec7c9cdc",["target"]="0x728421351d440ebc",["min"]=2,["max"]=100,["priority"]=2},{["tag"]=9,["source"]="0x51eea86bf6997e4e",["target"]="0xdb964631be1cf501",["min"]=2,["max"]=100,["priority"]=2},{["tag"]=9,["source"]="0x9a8a3aae287b230c",["target"]="0xdb964631be1cf501",["min"]=2,["max"]=100,["priority"]=2},{["tag"]=9,["source"]="0x3d0e03e2d574e1ca",["target"]="0x1f0a91729c0004e0",["min"]=2,["max"]=100,["priority"]=1},{["tag"]=9,["source"]="0x5ca832447445c0ba",["target"]="0x1f0a91729c0004e0",["min"]=2,["max"]=100,["priority"]=1},{["tag"]=8,["source"]="0x3d0e03e2d574e1ca",["target"]="0x883401af2a98a5f6",["min"]=2,["max"]=100,["priority"]=2},{["tag"]=8,["source"]="0x5ca832447445c0ba",["target"]="0x883401af2a98a5f6",["min"]=2,["max"]=100,["priority"]=2},{["tag"]=10,["source"]="0x1a7fcdff98c664b0",["target"]="0xab7b92b131c228c",["min"]=6,["max"]=100,["priority"]=3},{["tag"]=10,["source"]="0xa05bd1ec67b3ac4c",["target"]="0xab7b92b131c228c",["min"]=6,["max"]=100,["priority"]=3},{["tag"]=10,["source"]="0x36aa99cce5e60146",["target"]="0xa381a11c07d3eb94",["min"]=6,["max"]=100,["priority"]=3},{["tag"]=10,["source"]="0xbe39e313a1e46bb9",["target"]="0xa35207c6f2150806",["min"]=6,["max"]=100,["priority"]=3},{["tag"]=10,["source"]="0x32541fc4ec7c9cdc",["target"]="0xa35207c6f2150806",["min"]=6,["max"]=100,["priority"]=3},{["tag"]=10,["source"]="0xcc7022fdd172089b",["target"]="0xa381a11c07d3eb94",["min"]=6,["max"]=100,["priority"]=3},{["tag"]=11,["source"]="0x9e2e17f2ccccafdd",["target"]="0x1a7fcdff98c664b0",["min"]=2,["max"]=100,["priority"]=0},{["tag"]=9,["source"]="0x9e2e17f2ccccafdd",["target"]="0xef04cb84d097a497",["min"]=5,["max"]=100,["priority"]=1}}}
++return {["labels"]={["0x9e2e17f2ccccafdd"]="吐酸泰坦",["0x960b48a421a3faaa"]="蟑龙",["0xd37e8d120d2836e3"]="阴霾吐酸泰坦",["0xef04cb84d097a497"]="阴霾吐酸泰坦"},["units"]={{["resource"]="0x9e2e17f2ccccafdd",["family"]="0x32037646",["weights"]={1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0},["tags"]={}},{["resource"]="0x960b48a421a3faaa",["family"]="0x266feb3f",["weights"]={1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0},["tags"]={11}},{["resource"]="0xef04cb84d097a497",["family"]="0xd66c53ad",["weights"]={0.0,0.0,0.0,0.0,1.0,1.0,1.0,1.0,1.0,1.0},["tags"]={9}}},["groups"]={{["members"]={"0x32037646"},["tags"]={},["min"]=6,["max"]=7,["weight"]=0.20000000298023224,["overrides"]={},["players_min"]=1,["players_max"]=4},{["members"]={"0x32037646"},["tags"]={},["min"]=8,["max"]=10,["weight"]=0.30000001192092896,["overrides"]={},["players_min"]=1,["players_max"]=4},{["members"]={"0xd66c53ad"},["tags"]={9},["min"]=8,["max"]=10,["weight"]=0.30000001192092896,["overrides"]={},["players_min"]=1,["players_max"]=4},{["members"]={"0x32037646"},["tags"]={},["min"]=6,["max"]=10,["weight"]=0.3499999940395355,["overrides"]={},["players_min"]=1,["players_max"]=4},{["members"]={"0xd66c53ad"},["tags"]={9},["min"]=8,["max"]=10,["weight"]=0.30000001192092896,["overrides"]={},["players_min"]=1,["players_max"]=4},{["members"]={"0x32037646"},["tags"]={},["min"]=8,["max"]=10,["weight"]=0.4000000059604645,["overrides"]={},["players_min"]=1,["players_max"]=4},{["members"]={"0xd66c53ad"},["tags"]={9},["min"]=7,["max"]=10,["weight"]=1.0,["overrides"]={},["players_min"]=1,["players_max"]=4},{["members"]={"0x266feb3f"},["tags"]={11},["min"]=5,["max"]=6,["weight"]=2.0,["overrides"]={},["players_min"]=1,["players_max"]=4},{["members"]={"0x266feb3f"},["tags"]={11},["min"]=7,["max"]=9,["weight"]=3.0,["overrides"]={},["players_min"]=1,["players_max"]=4},{["members"]={"0x266feb3f"},["tags"]={11},["min"]=10,["max"]=10,["weight"]=2.4000000953674316,["overrides"]={},["players_min"]=1,["players_max"]=4}},["swaps"]={{["tag"]=1,["source"]="0x51eea86bf6997e4e",["target"]="0x72a83e49ced6db3d",["min"]=2,["max"]=100,["priority"]=0},{["tag"]=1,["source"]="0x9a8a3aae287b230c",["target"]="0x72a83e49ced6db3d",["min"]=2,["max"]=100,["priority"]=0},{["tag"]=3,["source"]="0x51eea86bf6997e4e",["target"]="0xaab438596f5e8fd9",["min"]=2,["max"]=100,["priority"]=0},{["tag"]=3,["source"]="0x9a8a3aae287b230c",["target"]="0xaab438596f5e8fd9",["min"]=2,["max"]=100,["priority"]=0},{["tag"]=1,["source"]="0x32541fc4ec7c9cdc",["target"]="0x10081acef6163ef6",["min"]=3,["max"]=100,["priority"]=0},{["tag"]=9,["source"]="0xbe39e313a1e46bb9",["target"]="0x728421351d440ebc",["min"]=2,["max"]=100,["priority"]=2},{["tag"]=9,["source"]="0x32541fc4ec7c9cdc",["target"]="0x728421351d440ebc",["min"]=2,["max"]=100,["priority"]=2},{["tag"]=9,["source"]="0x51eea86bf6997e4e",["target"]="0xdb964631be1cf501",["min"]=2,["max"]=100,["priority"]=2},{["tag"]=9,["source"]="0x9a8a3aae287b230c",["target"]="0xdb964631be1cf501",["min"]=2,["max"]=100,["priority"]=2},{["tag"]=9,["source"]="0x3d0e03e2d574e1ca",["target"]="0x1f0a91729c0004e0",["min"]=2,["max"]=100,["priority"]=1},{["tag"]=9,["source"]="0x5ca832447445c0ba",["target"]="0x1f0a91729c0004e0",["min"]=2,["max"]=100,["priority"]=1},{["tag"]=8,["source"]="0x3d0e03e2d574e1ca",["target"]="0x883401af2a98a5f6",["min"]=2,["max"]=100,["priority"]=2},{["tag"]=8,["source"]="0x5ca832447445c0ba",["target"]="0x883401af2a98a5f6",["min"]=2,["max"]=100,["priority"]=2},{["tag"]=10,["source"]="0x1a7fcdff98c664b0",["target"]="0xab7b92b131c228c",["min"]=6,["max"]=100,["priority"]=3},{["tag"]=10,["source"]="0xa05bd1ec67b3ac4c",["target"]="0xab7b92b131c228c",["min"]=6,["max"]=100,["priority"]=3},{["tag"]=10,["source"]="0x36aa99cce5e60146",["target"]="0xa381a11c07d3eb94",["min"]=6,["max"]=100,["priority"]=3},{["tag"]=10,["source"]="0xbe39e313a1e46bb9",["target"]="0xa35207c6f2150806",["min"]=6,["max"]=100,["priority"]=3},{["tag"]=10,["source"]="0x32541fc4ec7c9cdc",["target"]="0xa35207c6f2150806",["min"]=6,["max"]=100,["priority"]=3},{["tag"]=10,["source"]="0xcc7022fdd172089b",["target"]="0xa381a11c07d3eb94",["min"]=6,["max"]=100,["priority"]=3},{["tag"]=11,["source"]="0x9e2e17f2ccccafdd",["target"]="0x1a7fcdff98c664b0",["min"]=2,["max"]=100,["priority"]=0},{["tag"]=9,["source"]="0x9e2e17f2ccccafdd",["target"]="0xef04cb84d097a497",["min"]=5,["max"]=100,["priority"]=1}}}
+diff --git a/components/KnowYourConstellation/src/model.lua b/components/KnowYourConstellation/src/model.lua
+index 039d9e6..30851a7 100644
+--- a/components/KnowYourConstellation/src/model.lua
++++ b/components/KnowYourConstellation/src/model.lua
+@@ -1,8 +1,10 @@
+ local M = {}
+ 
+ function M.ascii(text)
+-    assert(type(text) == 'string' and not text:find('[^\32-\126]') and not text:find(';', 1, true),
+-        'Display text must be plain ASCII without semicolons')
++    -- Localised build: allow any printable non-ASCII text (CJK), still reject
++    -- control characters and semicolons, which the marquee parser relies on.
++    assert(type(text) == 'string' and not text:match('[%z\1-\31\127]') and not text:find(';', 1, true),
++        'Display text must not contain control characters or semicolons')
+     return text
+ end
+ 
+@@ -16,27 +18,27 @@ function M.make(snapshot, catalogue)
+     end
+     if #cards == 0 then
+         if snapshot.complete and #snapshot.tags==0 then
+-            cards[1] = {title='STANDARD FORCES', detail='No special constellation selected'}
++            cards[1] = {title='常规部队', detail='未选中特殊敌军编组'}
+         else
+-            cards[1] = {title='COMPOSITION UNAVAILABLE', detail='No resolved composition for this mission'}
++            cards[1] = {title='暂无编组情报', detail='无法确定此任务的敌军编组'}
+         end
+     end
+     if snapshot.heavies and #snapshot.heavies > 0 then
+-        cards[#cards+1] = {title='HEAVY ENEMIES',
++        cards[#cards+1] = {title='重型敌人',
+             detail=M.ascii(table.concat(snapshot.heavies,', '))}
+     end
+-    local footer = 'Possible encounters. Spawns are not guaranteed.'
+-    if not snapshot.complete then footer = 'Base forecast. Special enemy intel is incomplete.' end
++    local footer = '可能遭遇的敌人，不保证实际出现。'
++    if not snapshot.complete then footer = '基础预测：特殊敌人情报尚不完整。' end
+     if snapshot.difficulty < 6 then
+-        footer = snapshot.complete and 'Composition traits. Units vary with difficulty.' or footer
++        footer = snapshot.complete and '编组特征：兵种随难度变化。' or footer
+     end
+     local parts = {}
+     for _,card in ipairs(cards) do
+         parts[#parts+1] = '['..card.title..'] '..card.detail
+     end
+     return {key=snapshot.key, screen=snapshot.screen,
+-        marquee=M.ascii(table.concat(parts,'    //    ')..'    /// END REPORT ///'),
+-        footer=footer, label='FORECAST // INTEL AND RECON', complete=snapshot.complete}
++        marquee=M.ascii(table.concat(parts,'    //    ')..'    /// 报告结束 ///'),
++        footer=footer, label='敌情预测 // 情报与侦察', complete=snapshot.complete}
+ end
+ 
+ return M
+diff --git a/components/KnowYourConstellation/src/panel.lua b/components/KnowYourConstellation/src/panel.lua
+index f78e8f3..5f7fbef 100644
+--- a/components/KnowYourConstellation/src/panel.lua
++++ b/components/KnowYourConstellation/src/panel.lua
+@@ -16,6 +16,25 @@ end
+ 
+ -- Remove fully offscreen glyphs. Opaque padding clips partial edge glyphs,
+ -- letting the text move in pixels without drawing outside our own strip.
++-- Localised build: the marquee walks *characters*, not bytes. starts[i] is the
++-- byte index where character i begins, starts[n+1] == #text+1. Plain ASCII text
++-- yields exactly one entry per byte, so the original behaviour is unchanged.
++local function char_starts(text)
++    local starts = {}
++    local n = #text
++    local i = 1
++    while i <= n do
++        local b = text:byte(i)
++        starts[#starts+1] = i
++        if b < 0x80 then i = i + 1
++        elseif b < 0xE0 then i = i + 2
++        elseif b < 0xF0 then i = i + 3
++        else i = i + 4 end
++    end
++    starts[#starts+1] = n + 1
++    return starts
++end
++
+ function M.window(metrics,distance,width)
+     -- Negative distance is the initial entry from offscreen right. Do not
+     -- wrap it into the repeated text, which would skip the opening words.
+@@ -24,7 +43,8 @@ function M.window(metrics,distance,width)
+     while metrics.edges[first+1]<=offset do first=first+1 end
+     local last = first
+     while metrics.edges[last]<offset+width do last=last+1 end
+-    return metrics.text:sub(first,last-1),metrics.edges[first]-offset
++    return metrics.text:sub(metrics.starts[first],metrics.starts[last]-1),
++        metrics.edges[first]-offset
+ end
+ 
+ function M.new(engine)
+@@ -54,7 +74,7 @@ function M.new(engine)
+     local function colour(a,r,g,b) return engine.Color(a,r,g,b) end
+     local function vector(x,y,z) return engine.Vector3(x,y,z or 0) end
+     local function ascii(text)
+-        assert(type(text)=='string' and not text:find('[^\32-\126]') and not text:find(';',1,true),
++        assert(type(text)=='string' and not text:match('[%z\1-\31\127]') and not text:find(';',1,true),
+             'Unsupported display text')
+         return text
+     end
+@@ -64,37 +84,45 @@ function M.new(engine)
+         if self.cache[key] then return self.cache[key] end
+         local cycle=text..'      '
+         assert(#cycle<=4096, 'Forecast exceeds marquee bounds')
++        local starts=char_starts(cycle)
++        local nchars=#starts-1
+         local function advance(value)
+             local _,_,caret=Gui.text_extents(self.gui,value,font,box.detail_size)
+             assert(caret, 'Font caret unavailable')
+             return engine.Vector2.x(caret)
+         end
+         local edges={0}
++        -- Localised build: a CJK glyph advances by roughly one em, which is
++        -- wider than the ASCII-tuned bound, so allow up to two em per step
++        -- while still catching the garbage advances the assert exists for.
++        local max_step=math.max(box.padding-box.inset,box.detail_size*2)
+         -- Measure one cycle. Trailing spaces isolate successive cycles from
+         -- kerning, so repeated copies normally reuse the same caret positions.
+-        for i=1,#cycle do
+-            edges[i+1]=advance(cycle:sub(1,i))
++        for i=1,nchars do
++            edges[i+1]=advance(cycle:sub(1,starts[i+1]-1))
+             local step=edges[i+1]-edges[i]
+-            assert(step>=0 and step<box.padding-box.inset, 'Invalid caret advance')
++            assert(step>=0 and step<max_step, 'Invalid caret advance')
+         end
+-        local period=edges[#cycle+1]
++        local period=edges[nchars+1]
+         assert(period>0, 'Empty marquee')
+         local copies=math.ceil(available/period)+2
+         local repeated=cycle:rep(copies)
++        local repeated_starts=char_starts(repeated)
+         local additive=math.abs(advance(cycle..cycle)-2*period)<.001
+-        for i=#cycle+1,#repeated do
++        for i=nchars+1,nchars*copies do
+             if additive then
+-                local cycles=math.floor(i/#cycle)
+-                edges[i+1]=cycles*period+edges[i%#cycle+1]
++                local cycles=math.floor(i/nchars)
++                edges[i+1]=cycles*period+edges[i%nchars+1]
+             else
+                 -- Keep exact shaping if this font does not have additive
+                 -- cycle advances, instead of assuming fixed-width glyphs.
+-                edges[i+1]=advance(repeated:sub(1,i))
++                edges[i+1]=advance(repeated:sub(1,repeated_starts[i+1]-1))
+                 local step=edges[i+1]-edges[i]
+-                assert(step>=0 and step<box.padding-box.inset, 'Invalid caret advance')
++                assert(step>=0 and step<max_step, 'Invalid caret advance')
+             end
+         end
+-        local result={text=repeated,edges=edges,period=period,width=available,scale=box.scale}
++        local result={text=repeated,edges=edges,starts=repeated_starts,
++            period=period,width=available,scale=box.scale}
+         self.cache[key]=result
+         self.cache_order[#self.cache_order+1]=key
+         if #self.cache_order>8 then self.cache[table.remove(self.cache_order,1)]=nil end
+-- 
+2.49.0.windows.1
+

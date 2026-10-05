@@ -1,0 +1,4 @@
+# keep patches and archives byte-exact
+*.patch -text
+*.zip -text
+*.lua text eol=lf
